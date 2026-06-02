@@ -1,0 +1,271 @@
+{% comment %}
+  Price Breakup Accordion for Gold Jewellery
+  File: snippets/gold-price-breakup.liquid
+  
+  Add this snippet inside your product form, just below the price display.
+  Usage: {% render 'gold-price-breakup', product: product %}
+{% endcomment %}
+
+{% assign gold_weight    = product.metafields.custom.gold_weight_grams | plus: 0 %}
+{% assign diamond_value  = product.metafields.custom.diamond_value | plus: 0 %}
+{% assign stone_price    = product.metafields.custom.stone_price | plus: 0 %}
+{% assign making_fixed   = product.metafields.custom.making_charge_fixed | plus: 0 %}
+
+{% assign gold_rate_9k   = shop.metafields.custom.gold_rate_9k | plus: 0 %}
+{% assign gst_percent    = shop.metafields.custom.gst_percent | plus: 0 %}
+
+{% comment %} Check if non-gold product {% endcomment %}
+{% assign is_gold_product = true %}
+{% if gold_weight == 0 %}
+  {% assign is_gold_product = false %}
+{% endif %}
+
+{% if is_gold_product %}
+
+{% comment %} Embed rates and config as JSON {% endcomment %}
+<script>
+  window.__goldConfig = {
+    goldRate:    {{ gold_rate_9k }},
+    goldWeight:  {{ gold_weight }},
+    diamondValue: {{ diamond_value }},
+    stonePrice:  {{ stone_price }},
+    makingFixed: {{ making_fixed }},
+    gstPercent:  {{ gst_percent }}
+  };
+</script>
+
+<div
+  id="gold-price-breakup"
+  class="gold-price-breakup"
+  data-has-purity-variant="{{ has_purity_variant }}"
+>
+  <button
+    type="button"
+    class="gold-breakup-toggle"
+    aria-expanded="false"
+    aria-controls="gold-breakup-content"
+  >
+    <span class="gold-breakup-label">Price Breakup</span>
+    <span class="gold-breakup-total">
+      <span class="gold-total-price">Calculating...</span>
+    </span>
+    <span class="gold-breakup-arrow">▾</span>
+  </button>
+
+  <div id="gold-breakup-content" class="gold-breakup-content" hidden>
+    <table class="gold-breakup-table">
+      <tbody>
+        <tr class="gold-row">
+          <td class="gold-row-label">
+            Gold (9K)
+            (<span class="bd-weight">—</span>g × ₹<span class="bd-rate">—</span>/g)
+          </td>
+          <td class="gold-row-value">₹<span class="bd-gold-cost">—</span></td>
+        </tr>
+        <tr class="making-row">
+          <td class="gold-row-label">Making Charges (Fixed)</td>
+          <td class="gold-row-value">₹<span class="bd-making">—</span></td>
+        </tr>
+        <tr class="diamond-row" style="display:none;">
+          <td class="gold-row-label">Diamond Value</td>
+          <td class="gold-row-value">₹<span class="bd-diamond">—</span></td>
+        </tr>
+        <tr class="stone-row" style="display:none;">
+          <td class="gold-row-label">Stone Price</td>
+          <td class="gold-row-value">₹<span class="bd-stone">—</span></td>
+        </tr>
+        <tr class="subtotal-row">
+          <td class="gold-row-label">Subtotal</td>
+          <td class="gold-row-value">₹<span class="bd-subtotal">—</span></td>
+        </tr>
+        <tr class="gst-row">
+          <td class="gold-row-label">GST (<span class="bd-gst-pct">—</span>%)</td>
+          <td class="gold-row-value">₹<span class="bd-gst-amt">—</span></td>
+        </tr>
+        <tr class="total-row">
+          <td class="gold-row-label"><strong>Final Price</strong></td>
+          <td class="gold-row-value"><strong>₹<span class="bd-final">—</span></strong></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="gold-breakup-note">
+      Gold rate updated daily. Final price includes all applicable charges and GST.
+    </p>
+  </div>
+</div>
+
+<style>
+.gold-price-breakup {
+  margin: 16px 0;
+  border: 1px solid #e8e0cc;
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 14px;
+}
+
+.gold-breakup-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #fdf9f0;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  gap: 12px;
+  transition: background 0.2s;
+}
+
+.gold-breakup-toggle:hover { background: #faf3e3; }
+
+.gold-breakup-label {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gold-breakup-total {
+  flex: 1;
+  text-align: right;
+  color: #c9a84c;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.gold-breakup-arrow {
+  color: #999;
+  font-size: 12px;
+  transition: transform 0.25s;
+}
+
+.gold-breakup-toggle[aria-expanded="true"] .gold-breakup-arrow {
+  transform: rotate(180deg);
+}
+
+.gold-breakup-content {
+  border-top: 1px solid #e8e0cc;
+  background: #fff;
+  padding: 0 18px;
+}
+
+.gold-breakup-content[hidden] { display: none; }
+.gold-breakup-content:not([hidden]) { display: block; }
+
+.gold-breakup-table {
+  width: 100%;
+  border-collapse: collapse;
+  padding: 8px 0;
+}
+
+.gold-row-label { padding: 10px 0; color: #555; }
+.gold-row-value { padding: 10px 0; text-align: right; color: #1a1a1a; font-weight: 500; }
+
+.subtotal-row .gold-row-label,
+.subtotal-row .gold-row-value {
+  border-top: 1px dashed #e0d8c8;
+  padding-top: 12px;
+  color: #333;
+}
+
+.total-row .gold-row-label,
+.total-row .gold-row-value {
+  border-top: 2px solid #1a1a1a;
+  padding-top: 12px;
+  font-size: 15px;
+  color: #1a1a1a;
+}
+
+.gold-breakup-note {
+  padding: 10px 0 14px;
+  font-size: 11px;
+  color: #aaa;
+  border-top: 1px solid #f0ece4;
+  margin-top: 4px;
+}
+</style>
+
+<script>
+(function() {
+  function fmt(n) {
+    return Math.round(n).toLocaleString('en-IN');
+  }
+
+  function calculate(weight) {
+    const cfg         = window.__goldConfig;
+    const goldRate    = cfg.goldRate   || 0;
+    const diamondVal  = cfg.diamondValue || 0;
+    const stoneVal    = cfg.stonePrice || 0;
+    const makingFixed = cfg.makingFixed || 0;
+    const gstPct      = cfg.gstPercent || 0;
+
+    const tgp        = weight * goldRate;
+    const makingCharge = makingFixed * weight;
+    const tgpm       = tgp + makingCharge;
+    const output     = tgpm + diamondVal + stoneVal;
+    const gstAmt     = output * gstPct / 100;
+    const finalPrice = output + gstAmt;
+
+    return { tgp, makingCharge, diamondVal, stoneVal, output, gstAmt, gstPct, finalPrice, goldRate, weight };
+  }
+
+  function render(el, data) {
+    const q = s => el.querySelector(s);
+
+    el.querySelector('.gold-total-price').textContent = '₹' + fmt(data.finalPrice);
+
+    q('.bd-weight').textContent    = data.weight;
+    q('.bd-rate').textContent      = fmt(data.goldRate);
+    q('.bd-gold-cost').textContent = fmt(data.tgp);
+    q('.bd-making').textContent    = fmt(data.makingCharge);
+
+    if (data.diamondVal > 0) {
+      el.querySelector('.diamond-row').style.display = '';
+      q('.bd-diamond').textContent = fmt(data.diamondVal);
+    } else {
+      el.querySelector('.diamond-row').style.display = 'none';
+    }
+
+    if (data.stoneVal > 0) {
+      el.querySelector('.stone-row').style.display = '';
+      q('.bd-stone').textContent = fmt(data.stoneVal);
+    } else {
+      el.querySelector('.stone-row').style.display = 'none';
+    }
+
+    q('.bd-subtotal').textContent = fmt(data.output);
+    q('.bd-gst-pct').textContent  = data.gstPct;
+    q('.bd-gst-amt').textContent  = fmt(data.gstAmt);
+    q('.bd-final').textContent    = fmt(data.finalPrice);
+  }
+
+  function init() {
+    const el = document.getElementById('gold-price-breakup');
+    if (!el) return;
+
+    const cfg = window.__goldConfig;
+
+    // Calculate with product's gold weight (9K only, no variants)
+    render(el, calculate(cfg.goldWeight));
+
+    // ── Accordion toggle ──────────────────────────────────────────────────────
+    const btn     = el.querySelector('.gold-breakup-toggle');
+    const content = el.querySelector('.gold-breakup-content');
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!open));
+      if (!open) content.removeAttribute('hidden');
+      else content.setAttribute('hidden', '');
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+{% endif %}
