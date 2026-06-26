@@ -1,8 +1,5 @@
 import {
-  getAllProducts,
   getProductMetafields,
-  getVariantMetafields,
-  getShopMetafields,
   updateVariantPrice,
   calculatePrice,
 } from '../../lib/shopify';
@@ -15,79 +12,49 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // Set up streaming response so frontend can show live progress
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+  const { productId, variants, goldRate, gstPercent } = req.body;
 
-  const send = (data) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  if (!productId) {
+    return res.status(400).json({ error: 'productId is required' });
+  }
 
   try {
-    // 1. Load current shop rates
-    send({ type: 'status', message: 'Loading current gold rates...' });
-    const shopMetas = await getShopMetafields();
+    const productMetas = await getProductMetafields(productId);
 
-    const goldRate = parseFloat(shopMetas.gold_rate_9k?.value) || 0;
-    const gstPercent = parseFloat(shopMetas.gst_percent?.value) || 0;
+    const goldWeight    = parseFloat(productMetas.gold_weight_grams)      || 0;
+    const diamondValue  = parseFloat(productMetas.diamond_value)           || 0;
+    const makingFixed   = parseFloat(productMetas.making_charge_fixed)     || 0;
+    const stonePrice    = parseFloat(productMetas.stone_price)             || 0;
 
-    if (!goldRate) {
-      send({ type: 'error', message: 'Gold rate 9K not set. Please set it first.' });
-      res.end();
-      return;
+    if (!goldWeight) {
+      return res.status(200).json({
+        status: 'skipped',
+        reason: 'No gold weight specified'
+      });
     }
 
-    // 2. Get all products
-    send({ type: 'status', message: 'Fetching all products...' });
-    const products = await getAllProducts();
-    send({ type: 'total', count: products.length });
+    const result = calculatePrice({
+      goldWeight,
+      goldRate,
+      diamondValue,
+      makingFixed,
+      stonePrice,
+      gstPercent,
+    });
 
-    let updated = 0;
-    let skipped = 0;
-
-    for (const product of products) {
-      try {
-        const productMetas = await getProductMetafields(product.id);
-
-        const goldWeight    = parseFloat(productMetas.gold_weight_grams)      || 0;
-        const diamondValue  = parseFloat(productMetas.diamond_value)           || 0;
-        const makingFixed   = parseFloat(productMetas.making_charge_fixed)     || 0;
-        const stonePrice    = parseFloat(productMetas.stone_price)             || 0;
-
-        if (!goldWeight) {
-          send({ type: 'product', name: product.title, status: 'skipped', reason: 'No gold weight specified' });
-          skipped++;
-          continue;
-        }
-
-        const result = calculatePrice({
-          goldWeight,
-          goldRate,
-          diamondValue,
-          makingFixed,
-          stonePrice,
-          gstPercent,
-        });
-
-        for (const variant of product.variants) {
-          await updateVariantPrice(variant.id, result.finalPrice);
-        }
-
-        send({ type: 'product', name: product.title, status: 'updated' });
-        updated++;
-
-        // Small delay to avoid Shopify rate limits
-        await new Promise(r => setTimeout(r, 300));
-
-      } catch (err) {
-        send({ type: 'product', name: product.title, status: 'error', reason: err.message });
-      }
+    for (const variant of (variants || [])) {
+      await updateVariantPrice(variant.id, result.finalPrice);
     }
 
-    send({ type: 'done', updated, skipped });
-    res.end();
+    return res.status(200).json({
+      status: 'updated',
+      price: result.finalPrice
+    });
 
   } catch (err) {
-    send({ type: 'error', message: err.message });
-    res.end();
+    return res.status(500).json({
+      status: 'error',
+      reason: err.message
+    });
   }
 }
